@@ -1,0 +1,65 @@
+#!/bin/bash
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && (pwd -W 2>/dev/null || pwd))
+CURRENT_DIR=$(pwd)
+
+cd $SCRIPT_DIR
+
+ext="pdf"
+file="rapport.md"
+
+while getopts e:t:f:o: flag; do
+   case "$flag" in
+   e) ext=$OPTARG ;;
+   f) file=$OPTARG ;;
+   o) output=$OPTARG ;;
+   t) templates=$OPTARG ;;
+   *)
+      echo "Usage: $0 [-e extension] [-t template1,template2,...] [-f filename] [-o output filename]"
+      exit 1
+      ;;
+   esac
+done
+
+DEFAULT_COMMAND_ARGS="default.yaml -t latex $CURRENT_DIR/$file --template=eisvogel --resource-path=$CURRENT_DIR --pdf-engine=xelatex"
+
+if [ -n "$templates" ]; then
+   IFS=, read -ra templatesArray <<<"$templates"
+
+   for template in "${templatesArray[@]}"; do
+      if [ -z "$output" ]; then
+         tmpOutput=$template
+      elif [ ${#templatesArray[@]} -gt 1 ]; then
+         tmpOutput=$CURRENT_DIR/$output.$template
+      else
+         tmpOutput=$CURRENT_DIR/$output
+      fi
+
+      TEMPLATE_COMMAND_ARGS="$DEFAULT_COMMAND_ARGS -o $tmpOutput.$ext"
+
+      if [ "$template" = "listings" ]; then
+         echo "Generating $ext with listings [$tmpOutput.$ext]..."
+         pandoc $TEMPLATE_COMMAND_ARGS --listings -B setup-listings.tex
+      elif [ "$template" = "none" ]; then
+         echo "Generating $ext [$tmpOutput.$ext]..."
+         pandoc $TEMPLATE_COMMAND_ARGS
+      else
+         echo "Generating $ext with $template theme [$tmpOutput.$ext]..."
+         pandoc $TEMPLATE_COMMAND_ARGS --highlight-style $template -B setup-highlights.tex
+      fi
+   done
+else
+   rm -rf styles
+   mkdir styles
+   echo "Generating $ext for all available styles in styles/ folder"
+
+   echo "Generating $ext with listings..."
+   pandoc $DEFAULT_COMMAND_ARGS -o styles/listings.$ext --listings -B setup-listings.tex &
+
+   pandoc --list-highlight-styles | while read -r style; do
+      echo "Generating $ext with $style theme..."
+      pandoc $DEFAULT_COMMAND_ARGS -o styles/$style.$ext --highlight-style $style -B setup-highlights.tex &
+   done
+   wait
+fi
+cd $CURRENT_DIR
+echo "Done"

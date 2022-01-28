@@ -1,0 +1,23 @@
+#!/bin/bash
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && (pwd -W 2> /dev/null || pwd))
+
+file="README.md"
+output="Rapport"
+templates="none"
+
+while getopts e:t:f:o: flag; do
+   case "$flag" in
+   f) file=$OPTARG ;;
+   o) output=$OPTARG ;;
+   t) templates=$OPTARG ;;
+   *)
+      echo "Usage: $0 [-f md_file] [-o output_filename] [-t templates]"
+      exit 1
+      ;;
+   esac
+done
+
+npx -y embedme --stdout $file --strip-embed-comment --source-root $SCRIPT_DIR/../src/main/java > rapport.template.md
+$SCRIPT_DIR/pandoc-generate-styles -e pdf -f rapport.template.md -o $output -t $templates
+rm rapport.template.md
