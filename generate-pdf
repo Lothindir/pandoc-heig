@@ -18,6 +18,6 @@ while getopts e:t:f:o: flag; do
    esac
 done
 
-npx -y embedme --stdout $file --strip-embed-comment --source-root $SCRIPT_DIR/../src/main/java > rapport.template.md
+npx -y embedme --stdout $file --strip-embed-comment --source-root $SCRIPT_DIR/.. > rapport.template.md
 $SCRIPT_DIR/pandoc-generate-styles -e pdf -f rapport.template.md -o $output -t $templates
 rm rapport.template.md
